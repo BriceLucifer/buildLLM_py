@@ -54,5 +54,19 @@ def main():
     first_batch = next(data_iter)
     print(first_batch)
 
+def test2_2():
+    with open("the-verdict.txt", "r", encoding="utf-8") as f:
+        raw_text = f.read()
+    
+    # 创建数据加载器件
+    dataloader_1 = create_dataloader_v1(txt=raw_text, batch_size=1, max_length=2, stride=2, shuffle=False)
+    dataloader_2 = create_dataloader_v1(txt=raw_text, batch_size=1, max_length=8, stride=2, shuffle=False)
+    data1_iter = iter(dataloader_1)
+    data2_iter = iter(dataloader_2)
+    print(next(data1_iter), "\n-----------\n", next(data1_iter))
+    print(next(data2_iter), "\n-----------\n", next(data2_iter))
+
+
 if __name__ == "__main__":
     main()
+    test2_2()
