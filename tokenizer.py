@@ -10,6 +10,8 @@ class SimpleTokenizerV1:
         preprocessed = [
             item.strip() for item in preprocessed if item.strip()
         ]
+        # use <|unk|> to replace unknow token
+        preprocessed = [item if item in self.str_to_int else "<|unk|>" for item in preprocessed]
         ids = [self.str_to_int[s] for s in preprocessed]
         return ids
     

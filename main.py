@@ -31,11 +31,17 @@ def main():
     # print(raw_text[:99])
     vr = easy_tokenizer(raw_text)
 
+    # extend 方法
     all_words = token_id(vr)
-    vocab_size = len(all_words)
-    print(vocab_size)
+    all_words.extend(["<|endoftext|>", "<|unk|>"])
+    # vocab_size = len(all_words)
+    # print(vocab_size)
 
     vocab: dict[str,int]= { token:integer for integer,token in enumerate(all_words) }
+    print(len(vocab.items()))
+
+    for i, item in enumerate(list(vocab.items())[-5:]):
+        print(item)
 
     tokenizer = SimpleTokenizerV1(vocab)
     text = """"It's the last he painted, you know,"
@@ -44,6 +50,15 @@ def main():
     # 词元id
     print(ids)
     print(tokenizer.decode(ids))
+
+    text1 = "Hello, do you like tea"
+    text2 = "In the sublit terraces of the palace."
+    text = " <|endoftext|> ".join((text1, text2))
+    print(text)
+
+    print(tokenizer.encode(text))
+    print(tokenizer.decode(tokenizer.encode(text)))
+
     # for i,item in enumerate(vocab.items()):
     #     print(item)
     #     if i >= 50:
