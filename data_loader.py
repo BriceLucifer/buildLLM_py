@@ -48,11 +48,13 @@ def main():
     with open("the-verdict.txt", "r", encoding="utf-8") as f:
         raw_text = f.read()
     # 创建数据加载器
-    dataloader = create_dataloader_v1(txt=raw_text, batch_size=1, max_length=4, stride=1, shuffle=False)
+    dataloader = create_dataloader_v1(txt=raw_text, batch_size=8, max_length=4, stride=4, shuffle=False)
     # 数据迭代器 input 和 target
     data_iter = iter(dataloader)
-    first_batch = next(data_iter)
-    print(first_batch)
+    # first_batch = next(data_iter)
+    input, target = next(data_iter)
+    print("input:", input)
+    print("target:", target)
 
 def test2_2():
     with open("the-verdict.txt", "r", encoding="utf-8") as f:
