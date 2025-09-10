@@ -98,7 +98,7 @@ print(dropout(example))
 print(dropout(atten_weights))
 
 # 自己创建一个因果注意力类
-class CasualAttention(torch.nn.Module):
+class CausalAttention(torch.nn.Module):
     '''
         __init__()
         d_in: 输入维度
@@ -139,7 +139,7 @@ torch.manual_seed(123)
 batch = torch.stack((inputs, inputs), dim=0)
 print(batch.shape)
 context_length = batch.shape[1]
-ca = CasualAttention(
+ca = CausalAttention(
     d_in=d_in, 
     d_out=d_out, 
     context_length=context_length, 
