@@ -96,3 +96,7 @@ class MultiHeadAttention(torch.nn.Module):
 
         context_vec = self.out_proj(context_vec)
         return context_vec
+
+torch.manual_seed(123)
+batch_size, context_length, d_in = batch.shape
+d_out = 2
