@@ -163,7 +163,7 @@ for i, (y, labal) in enumerate(zip([y_gelu, y_relu], ["GELU", "RELU"]), 1):
     plt.grid(True)
 
 plt.tight_layout()
-plt.show()
+# plt.show()
 
 class FeedForward(nn.Module):
     def __init__(self, cfg:dict):
@@ -228,4 +228,13 @@ def print_gradients(model:nn.Module, x:torch.Tensor):
         if 'weight' in name:
             print(f"{name} has gradient mean of {param.grad.abs().mean().item()}") # pyright: ignore[reportOptionalMemberAccess]
 
+# normal neural network
 print_gradients(model_without_shortcut, sample_input)
+print("\n")
+# shortcut neural network
+torch.manual_seed(123)
+model_with_shortcut = ExampleDeepNeuralNetwork(
+    layer_sizes=layer_size,
+    use_shortcut=True
+)
+print_gradients(model_with_shortcut, sample_input)
