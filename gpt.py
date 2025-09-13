@@ -73,7 +73,7 @@ print(batch)
 
 # init a DummyGPTModel
 torch.manual_seed(123)
-model = DummyGPTModel(GPT_CONFIG_124M)
+model:nn.Module = DummyGPTModel(GPT_CONFIG_124M)
 logits: torch.Tensor = model(batch)
 print("output shape:", logits.shape)
 print(logits)
@@ -238,3 +238,141 @@ model_with_shortcut = ExampleDeepNeuralNetwork(
     use_shortcut=True
 )
 print_gradients(model_with_shortcut, sample_input)
+
+# connect the attention layer and linear layer
+from multihead_attention import MultiHeadAttention
+
+class TransformerBlock(nn.Module):
+    def __init__(self, cfg: dict):
+        super().__init__()
+        self.att = MultiHeadAttention(
+            d_in=cfg["emb_dim"],
+            d_out=cfg["emb_dim"],
+            context_length=cfg["context_length"],
+            dropout=cfg["drop_rate"],
+            num_heads=cfg["n_heads"],
+            qkv_bias=cfg["qkv_bias"]
+        )
+        self.ff = FeedForward(cfg=cfg)
+        self.norm1 = LayerNorm(cfg["emb_dim"])
+        self.norm2 = LayerNorm(cfg["emb_dim"])
+        self.drop_shortcut = nn.Dropout(cfg["drop_rate"])
+    
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+
+        # 在注意力块添加快捷链接 后续用
+        shortcut: torch.Tensor = x
+        x = self.norm1(x)
+        x = self.att(x)
+        x = self.drop_shortcut(x)
+        x = x + shortcut
+
+        # 再次建立快捷链接
+        shortcut = x 
+        x = self.norm2(x)
+        x = self.ff(x)
+        x = self.drop_shortcut(x)
+        x = x + shortcut
+        return x
+
+# example
+torch.manual_seed(123)
+x = torch.rand(2, 4, 768)
+block = TransformerBlock(cfg=GPT_CONFIG_124M)
+output: torch.Tensor = block(x)
+
+print("Input shape:", x.shape)
+print("Output shape:", output.shape)
+
+# 实现GPT架构
+class GPTModel(nn.Module):
+    def __init__(self, cfg: dict):
+        super().__init__()
+        self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
+        self.pos_emb = nn.Embedding(cfg["context_length"], cfg["emb_dim"])
+        self.drop_emb = nn.Dropout(cfg["drop_rate"])
+        
+        self.trf_blocks = nn.Sequential(
+            * [TransformerBlock(cfg=cfg) for _ in range(cfg["n_layers"])]
+        )
+        
+        self.final_norm = LayerNorm(cfg["emb_dim"])
+        self.out_head = nn.Linear(
+            cfg["emb_dim"], cfg["vocab_size"], bias=False
+        )
+
+    def forward(self, in_idx: torch.Tensor) -> torch.Tensor:
+        batch_size, seq_len = in_idx.shape
+        tok_embeds = self.tok_emb(in_idx)
+
+        pos_embeds = self.pos_emb(
+            torch.arange(seq_len, device=in_idx.device)
+        )
+
+        x = tok_embeds + pos_embeds
+        x = self.drop_emb(x)
+        x = self.trf_blocks(x)
+        x = self.final_norm(x)
+        logits = self.out_head(x)
+        return logits
+
+# example of use GPTModel
+torch.manual_seed(123)
+model:nn.Module = GPTModel(GPT_CONFIG_124M)
+out = model(batch)
+print("Input batch:", batch, "\n")
+print("Output batch:", out.shape, "\n")
+print(out)
+
+# 计算参数
+total_params = sum( p.numel() for p in model.parameters())
+print(f"Total number of parameters: {total_params}")
+# weight tying 权重共享
+print("Token embedding layer shape:", model.tok_emb.weight.shape)
+print("Output layer shape:", model.out_head.weight.shape)
+# 所以需要减去输出层的参数量
+total_params_gpt2 = (
+    total_params - sum( p.numel() for p in model.out_head.parameters())
+)
+
+print(f"Number of trainable parameters " 
+      f"considering weight tying: {total_params_gpt2:,}"
+)
+# 计算对象中1.63亿参数的内存需求
+total_size_bytes = total_params * 4
+total_size_mb = total_size_bytes / (1024 * 1024)
+print(f"Total size of the model: {total_size_mb:.2f} MB")
+
+# the method for gpt2 to generate text
+def generate_text_simpel(model:nn.Module, idx: torch.Tensor, max_new_tokens: int, context_size: int) -> torch.Tensor:
+    for _ in range(max_new_tokens):
+        idx_cond = idx[:, -context_size:]
+        with torch.no_grad():
+            logits = model(idx_cond)
+        
+        logits = logits[:, -1, :]
+        probas = torch.softmax(logits, dim=-1)
+        idx_next = torch.argmax(probas, dim=-1, keepdim=True)
+        idx = torch.cat((idx, idx_next), dim=1)
+    
+    return idx
+
+# example 尝试用Hello, I am 上下文作为模型输入来调用generate_text_simple
+start_context = "Hello, I am"
+encoded = tokenizer.encode(start_context)
+print("encoded:", encoded)
+encoded_tensor = torch.tensor(encoded).unsqueeze(0) # 增加batch维度
+print("encoded_tensor.shape:", encoded_tensor.shape)
+# 然后模型设置为.eval() 禁用dropout等只在训练期间使用的随机组件
+model.eval()
+out = generate_text_simpel(
+    model=model,
+    idx=encoded_tensor,
+    max_new_tokens=6,
+    context_size=GPT_CONFIG_124M["context_length"]
+)
+print("Output:", out)
+print("Output length:", len(out[0]))
+# 使用分词器 把id 转换为文本
+decoded_text = tokenizer.decode(out.squeeze(0).tolist())
+print(decoded_text)
