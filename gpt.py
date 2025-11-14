@@ -344,7 +344,7 @@ total_size_mb = total_size_bytes / (1024 * 1024)
 print(f"Total size of the model: {total_size_mb:.2f} MB")
 
 # the method for gpt2 to generate text
-def generate_text_simpel(model:nn.Module, idx: torch.Tensor, max_new_tokens: int, context_size: int) -> torch.Tensor:
+def generate_text_simple(model:nn.Module, idx: torch.Tensor, max_new_tokens: int, context_size: int) -> torch.Tensor:
     for _ in range(max_new_tokens):
         idx_cond = idx[:, -context_size:]
         with torch.no_grad():
@@ -365,14 +365,23 @@ encoded_tensor = torch.tensor(encoded).unsqueeze(0) # 增加batch维度
 print("encoded_tensor.shape:", encoded_tensor.shape)
 # 然后模型设置为.eval() 禁用dropout等只在训练期间使用的随机组件
 model.eval()
-out = generate_text_simpel(
+out = generate_text_simple(
     model=model,
     idx=encoded_tensor,
-    max_new_tokens=6,
+    max_new_tokens=10,
     context_size=GPT_CONFIG_124M["context_length"]
 )
 print("Output:", out)
 print("Output length:", len(out[0]))
 # 使用分词器 把id 转换为文本
 decoded_text = tokenizer.decode(out.squeeze(0).tolist())
+
+# streapm print just for fun
+import time
+def stream_print(text: str, delay: float = 0.05):
+    for ch in text:
+        print(ch, end="", flush=True)
+        time.sleep(delay)
+    print()
 print(decoded_text)
+stream_print(decoded_text)
